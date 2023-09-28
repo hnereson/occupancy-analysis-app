@@ -1,14 +1,11 @@
 import pandas as pd
-from dotenv import load_dotenv
-import os 
+import streamlit as st 
 import boto3 
 import json  
 from io import StringIO    
 
-load_dotenv()
-MASTER_ACCESS_KEY = os.getenv("MASTER_ACCESS_KEY")
-MASTER_SECRET = os.getenv("MASTER_SECRET")
-board_id = os.getenv('board_id')
+MASTER_ACCESS_KEY = st.secrets["MASTER_ACCESS_KEY"]
+MASTER_SECRET = st.secrets["MASTER_SECRET"]
 
 def s3_init():  
     
@@ -34,3 +31,20 @@ def grab_s3_file(f, bucket, idx_col=None, is_json=False):
 
 # we can add a pickle function to this if needed
     return data 
+
+def style_plot(ax):
+    # Remove borders
+    for spine in ['top', 'right', 'bottom', 'left']:
+        ax.spines[spine].set_visible(False)
+
+    # Change font to monospace
+    for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
+        item.set_fontname('monospace')
+
+    # Set background colors
+    ax.set_facecolor("#F3F5F7")
+
+    # Grid, title, labels settings...
+    ax.grid(axis='y', linestyle='--', linewidth=0.7, alpha=0.4)
+    
+    return ax
