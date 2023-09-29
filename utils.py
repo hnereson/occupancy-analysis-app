@@ -15,6 +15,7 @@ def s3_init():
           aws_secret_access_key=MASTER_SECRET) 
     return s3 
 
+@st.cache_data
 def grab_s3_file(f, bucket, idx_col=None, is_json=False):
     s3 = s3_init()
     data = s3.get_object(Bucket=bucket, Key=f)['Body'].read().decode('utf-8') 
@@ -32,19 +33,9 @@ def grab_s3_file(f, bucket, idx_col=None, is_json=False):
 # we can add a pickle function to this if needed
     return data 
 
-def style_plot(ax):
-    # Remove borders
-    for spine in ['top', 'right', 'bottom', 'left']:
-        ax.spines[spine].set_visible(False)
+def blank(): return st.write('') 
 
-    # Change font to monospace
-    for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
-        item.set_fontname('monospace')
+def password_authenticate(pwsd):
 
-    # Set background colors
-    ax.set_facecolor("#F3F5F7")
-
-    # Grid, title, labels settings...
-    ax.grid(axis='y', linestyle='--', linewidth=0.7, alpha=0.4)
-    
-    return ax
+    if pwsd in st.secrets["ADMIN"]:
+        return "Admin"

@@ -32,7 +32,8 @@ class Plots():
             km_df = km_df[(km_df['timeline'] <= 180) & (km_df['timeline']>=0)]
             all_data = pd.concat([all_data, km_df])
 
-        all_data.rename(columns={all_data.columns[1]: 'Survival_probability', 'timeline': 'Days'}, inplace=True)
+        all_data.rename(columns={all_data.columns[1]: '% Survived', 'timeline': 'Days'}, inplace=True)
+        all_data['% Survived'] = all_data['% Survived'].round(3)
         return all_data
 
     def style_chart(self, chart, title_text, width=600, height=300):
@@ -50,19 +51,14 @@ class Plots():
         return chart
 
     def plot_data_with_tooltip(self, data, x_field, y_field, color_field, hex_palette):
-        nearest = alt.selection_point(nearest=True, on='mouseover', fields=[x_field], empty='none')
-        y_min = data['Survival_probability'].min()
-        y_max = data['Survival_probability'].max()
+        nearest = alt.selection_point(nearest=True, on='mouseover', fields=[x_field], empty=False)
+        y_min = data['% Survived'].min()
+        x_max = min(180, data['Days'].max())
 
         line = alt.Chart(data).mark_line(interpolate='basis').encode(
-            x=alt.X(f'{x_field}:Q', scale=alt.Scale(domain=[0, 180]), title=None),
-            y=alt.Y(f'{y_field}:Q', scale=alt.Scale(domain=[y_min, y_max]), title=None),
-            color=alt.Color(f'{color_field}:N', scale=alt.Scale(range=hex_palette)),
-            tooltip=[alt.Tooltip(f'{color_field}:N', title='Model'),
-                    alt.Tooltip(f'{x_field}:Q', title='Days'),
-                    alt.Tooltip(f'{y_field}:Q', title='Survival Probability')],
-        ).add_params(
-            nearest
+            x=alt.X(f'{x_field}:Q', scale=alt.Scale(domain=[0, x_max]), title=None),
+            y=alt.Y(f'{y_field}:Q', scale=alt.Scale(domain=[y_min, 1]), title=None),
+            color=alt.Color(f'{color_field}:N', scale=alt.Scale(range=hex_palette))
         )
 
         selectors = alt.Chart(data).mark_point().encode(
@@ -94,6 +90,6 @@ class Plots():
         color_palette = sns.color_palette("dark:#5A9_r", len(unique_models))
         hex_palette = [rgb2hex(color) for color in color_palette]
 
-        chart = self.plot_data_with_tooltip(data, 'Days', 'Survival_probability', 'model', hex_palette)
+        chart = self.plot_data_with_tooltip(data, 'Days', '% Survived', 'model', hex_palette)
         styled_chart = self.style_chart(chart, title_text)
         st.altair_chart(styled_chart, use_container_width=True)
