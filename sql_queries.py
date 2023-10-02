@@ -29,6 +29,44 @@ def run_sql_query(sql_query):
     
     return df 
 
+move_outs = """
+with dates as (
+	select (date_trunc('month',d) + interval '1 month'- interval '1 day')::date as date 
+	from generate_series
+		(('2019-05-31')::date,
+		now()::date,
+		interval '1 month') as d
+)
+select 
+	d.date,
+    f.site_code,
+	count(distinct o2.id) as move_outs
+from dates d
+	inner join occupancies o2 on date_trunc('month', o2.moved_out_at::date) = date_trunc('month', d.date)  
+    inner join units u on u.id = o2.unit_id
+    inner join facilities f on f.id = u.facility_id
+group by d.date, f.site_code
+"""
+
+occupants = """
+	with dates as (
+	select (date_trunc('month',d) + interval '1 month'- interval '1 day')::date as date 
+	from generate_series
+		(('2019-05-31')::date,
+		now()::date,
+		interval '1 month') as d
+)
+select 
+	d.date,
+    f.site_code,
+	count(distinct o.id) as occupants
+from dates d
+	inner join occupancies o on o.move_in_date::date <= d.date and (o.moved_out = false or o.moved_out_at::date >= (date_trunc('month', d.date)))
+    inner join units u on u.id = o.unit_id
+    inner join facilities f on f.id = u.facility_id
+	group by d.date, f.site_code
+"""
+
 all_tenants = """
 select distinct on (f.site_code , a.id) f.site_code, a.id, o.id as occ_id, min(o.move_in_date) as move_in_date
     , o.moved_out_at::date

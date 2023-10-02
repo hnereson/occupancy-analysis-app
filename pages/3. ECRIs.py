@@ -1,12 +1,12 @@
 import pandas as pd
 import numpy as np
-from plots import Plots
+from plots import SurvivalPlot
 import streamlit as st
 from sql_queries import run_sql_query, facilities_sql, all_tenants
 from utils import grab_s3_file, password_authenticate, blank
 from Home import enter_password 
 
-plots = Plots()
+survival_plots = SurvivalPlot()
 page_title="Occupancy Tool - ECRIs"
 st.set_page_config(page_title=page_title, page_icon="📈", layout= "wide")
 
@@ -33,31 +33,38 @@ try:
 except Exception as e:
     st.error('Error retrieving ECRI data.')
 
-ecris['notification_date'] = pd.to_datetime(ecris['notification_date'])
-ecris['increase_date'] = pd.to_datetime(ecris['increase_date'])
-ecris['moved_out_date'] = pd.to_datetime(ecris['moved_out_date'])
-ecris['event_occurred'] = (~ecris['moved_out_date'].isnull()).astype(int)
+st.cache(ttl=60*60*24) # daily refresh
+def process_ecris (ecris):
+    ecris['notification_date'] = pd.to_datetime(ecris['notification_date'])
+    ecris['increase_date'] = pd.to_datetime(ecris['increase_date'])
+    ecris['moved_out_date'] = pd.to_datetime(ecris['moved_out_date'])
+    ecris['event_occurred'] = (~ecris['moved_out_date'].isnull()).astype(int)
 
-# Explicit datetime conversion
-min_date = ecris['notification_date'].min().to_pydatetime()
-max_date = ecris['notification_date'].max().to_pydatetime()
+    # Explicit datetime conversion
+    min_date = ecris['notification_date'].min().to_pydatetime()
+    max_date = ecris['notification_date'].max().to_pydatetime()
 
-all_possible_dates = pd.date_range(start=min_date, end=max_date).date.tolist()
-six_months_ago = (pd.Timestamp.now() - pd.DateOffset(months=6)).date()
-default_range = (six_months_ago, max_date.date())
+    all_possible_dates = pd.date_range(start=min_date, end=max_date).date.tolist()
+    six_months_ago = (pd.Timestamp.now() - pd.DateOffset(months=6)).date()
+    default_range = (six_months_ago, max_date.date())
 
-ecris_pending = ecris[ecris['ecri_pending']==True].shape[0]
-increase_amount_pending = ecris['pending_increase_amount'].sum()
-increase_amount_pending = "${:,.0f}".format(increase_amount_pending)
+    ecris_pending = ecris[ecris['ecri_pending']==True].shape[0]
+    increase_amount_pending = ecris['pending_increase_amount'].sum()
+    increase_amount_pending = "${:,.0f}".format(increase_amount_pending)
+    
+    return min_date, max_date, all_possible_dates, six_months_ago, default_range, ecris_pending, increase_amount_pending
+
+min_date, max_date, all_possible_dates, six_months_ago, default_range, ecris_pending, increase_amount_pending = process_ecris(ecris)
 
 # ----- UI -----
 with st.form("Filters"):
-    form1= st.columns([2,1,1,4])
-    range = form1[0].select_slider(
-        "Choose Notification Dates", 
-        options=all_possible_dates, 
-        value=default_range
-    )
+    form1= st.columns([2,1,1,4]) 
+    range = form1[0].slider("Select a Date Range", min_date.date(), max_date.date(), default_range)
+    # range = form1[0].select_slider(
+    #     "Choose Notification Dates", 
+    #     options=all_possible_dates, 
+    #     value=default_range
+    # )
     start_date, end_date = range
     formatted_start_date = start_date.strftime('%Y-%m-%d')
     formatted_end_date = end_date.strftime('%Y-%m-%d')
@@ -91,7 +98,7 @@ blank()
 row2=st.columns([3,2,2])
 with row2[0]:
     # plot_survival_curve_altair(filtered_ecris, 'notification_date')
-    plots.plot_altair_chart(filtered_ecris, 'notification_date', 'Survival by Model')
+    survival_plots.plot_altair_chart(filtered_ecris, 'notification_date', 'Survival by Model')
 
 end_row = st.columns([1,5,5])
 with end_row[0]:
