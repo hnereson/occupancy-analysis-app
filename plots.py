@@ -128,7 +128,7 @@ class HeatmapPlot(BasePlot):
         )
 
         # Style the chart
-        styled_chart = self.style_chart(chart, title_text, width=400, height=300)
+        styled_chart = self.style_chart(chart, title_text, width=600, height=400)
         return styled_chart
 
     def display_heatmap(self, data, x_field, y_field, color_field, title_text):
@@ -182,7 +182,7 @@ class HistogramPlot(BasePlot):
 
         return sorted_df
 
-    def plot_altair_histogram(self, data, x_field, title_text, bar_color="teal"):
+    def plot_altair_histogram(self, data, x_field, title_text, x_title, y_title, bar_color="teal", num_bins=30, bar_width=15, density=False):
         """
         Create a histogram using Altair based on the provided data.
         
@@ -195,15 +195,40 @@ class HistogramPlot(BasePlot):
         Returns:
         - chart: Altair histogram chart.
         """
-        bin_size = 28 / 30  # Define bin size based on the desired range and number of bins
+        min_value = data[x_field].min()
+        max_value = data[x_field].max()
+        bin_edges = np.linspace(min_value, max_value, num_bins + 1)
 
-        # Define the histogram chart
-        chart = alt.Chart(data).mark_bar(color=bar_color).encode(
-            x=alt.X(f'{x_field}:Q', bin=alt.Bin(step=bin_size, extent=[-14, 14]), title='Y/Y Change in % Moved Out'),
-            y='count()',
-            tooltip=[x_field, 'count()']
+        # Assign each data point to a bin
+        data['bin'] = np.digitize(data[x_field], bin_edges, right=True) - 1
+
+        # Group by the bin and count the number of data points in each bin
+        binned_data = data.groupby('bin').size().reset_index(name='count')
+        binned_data[x_field] = (bin_edges[binned_data['bin']] + bin_edges[binned_data['bin'] + 1]) / 2
+
+        # Plot the histogram using Altair
+        chart = alt.Chart(binned_data).mark_bar(color=bar_color, size=bar_width).encode(
+            x=alt.X(f'{x_field}:Q', title=x_title, axis=alt.Axis(grid=False)),
+            y=alt.Y('count:Q', title=y_title, axis=alt.Axis(grid=False)),
+            tooltip=[x_field, 'count']
         )
+        # Density plot (like KDE)
+        max_count = binned_data['count'].max()
+        if density == True:
+            density = alt.Chart(data).transform_density(
+                density=x_field,
+                as_=[x_field, 'density'],
+                bandwidth=0.5  # Adjust bandwidth as needed
+            ).transform_calculate(
+                scaled_density=f'datum.density * {max_count}'  # Rescale density values
+            ).mark_line(color='red').encode(
+                x=f'{x_field}:Q',
+                y=alt.Y('scaled_density:Q', axis=alt.Axis(grid=False))
+            )
 
+            chart = (chart + density)
+        
+        chart = chart.interactive()
         # Style the chart
         styled_chart = self.style_chart(chart, title_text, width=600, height=400)
         st.altair_chart(styled_chart, use_container_width=True)
@@ -213,7 +238,7 @@ class ScatterPlot(BasePlot):
     def __init__(self):
         super().__init__()
 
-    def prepare_scatter_data(self, move_out_df, pred_moveouts_df, end_date):
+    def prepare_scatter_data(self, data, pred_moveouts_df, end_date):
         """
         Prepare data for the scatterplot based on the provided end date.
         
@@ -227,7 +252,7 @@ class ScatterPlot(BasePlot):
         """
         
         # Filter move_out_df for the given end_date
-        filtered_data = move_out_df[move_out_df['date'] == end_date]
+        filtered_data = data[data['date'] == end_date]
 
         # Merge the filtered data with predicted move-outs
         merged_scatter_data = filtered_data[['site_code', '% moved out', 'move_outs']].merge(pred_moveouts_df, on='site_code')

@@ -60,7 +60,7 @@ def date_ranges(occs):
     min_date = occs['date'].min()
     max_date = occs['date'].max()
     one_month_ago = (pd.Timestamp.now() - pd.DateOffset(months=1)).date()
-    default_range = (one_month_ago, max_date)
+    default_range = (one_month_ago, pd.Timestamp.now().date())
     return min_date, max_date, one_month_ago, default_range
 
 min_date, max_date, one_month_ago, default_range = date_ranges(occs)
@@ -91,7 +91,8 @@ row2=st.columns([2,2,2])
 with row2[0]: # not working
     # display histogram of yoy move outs
     prepped_histo = histogram.prepare_histogram_data(move_out_df, start_date, end_date)
-    histogram.plot_altair_histogram(prepped_histo, x_field="yoy_change", title_text="Distribution of Y/Y Changes in % Moved Out")
+    # st.write(prepped_histo)
+    histogram.plot_altair_histogram(prepped_histo, x_field="yoy_change", title_text="Distribution of Y/Y Changes in % Moved Out", x_title='', y_title='# Properties')
 
 with row2[2]:
     # Use the display_heatmap method to display the heatmap in Streamlit
