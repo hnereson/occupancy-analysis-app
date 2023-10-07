@@ -40,7 +40,9 @@ with dates as (
 select 
 	d.date,
     f.site_code,
-	count(distinct o2.id) as move_outs
+    sum(u.width * u.length) as area_move_out,
+	count(distinct o2.id) as move_outs,
+    sum(o2.monthly_rate) as move_out_rate
 from dates d
 	inner join occupancies o2 on date_trunc('month', o2.moved_out_at::date) = date_trunc('month', d.date)  
     inner join units u on u.id = o2.unit_id

@@ -11,9 +11,8 @@ class BasePlot():
         self.font = 'monospace'
 
     def style_chart(self, chart, title_text, width=600, height=300):
-        chart = chart.properties(
-            width=width, 
-            height=height, 
+        if width == False and height ==False:
+             chart = chart.properties(
             title=alt.TitleParams(title_text, fontSize=16, font=self.font, anchor='middle')
         ).configure_axis(
             labelFont=self.font,
@@ -22,6 +21,18 @@ class BasePlot():
             labelFont=self.font,
             titleFont=self.font
         )
+        else:
+            chart = chart.properties(
+                width=width, 
+                height=height, 
+                title=alt.TitleParams(title_text, fontSize=16, font=self.font, anchor='middle')
+            ).configure_axis(
+                labelFont=self.font,
+                titleFont=self.font
+            ).configure_legend(
+                labelFont=self.font,
+                titleFont=self.font
+            )
         return chart
 
     def plot_data_with_tooltip(self, data, x_field, y_field, color_field, hex_palette, x_scale, y_scale):
@@ -284,4 +295,25 @@ class ScatterPlot(BasePlot):
 
         # Style the chart
         styled_chart = self.style_chart(chart, title_text, width=600, height=400)
+        st.altair_chart(styled_chart, use_container_width=True)
+
+class BarPlot(BasePlot):
+    def __init__(self):
+        super().__init__()
+        # x = year , y=move outs
+    def plot_altair_monthly_bars(self, data, x_field, y_field, secondary_x, title_text, color_palette="teals"):
+        # Sum the data by month and year
+        summed_data = data.groupby(['month', 'year'])[y_field].sum().reset_index()
+
+        # Define the bar chart
+        chart = alt.Chart(summed_data).mark_bar().encode(
+            x=alt.X(f'{x_field}:O', title=None, axis=alt.Axis(labels=False, ticks=False, domain=False)),  # Hide x-axis labels, ticks, and domain),
+            y=alt.Y(f'{y_field}:Q', title=None),
+            color=alt.Color(f'{x_field}:O', scale=alt.Scale(scheme=color_palette), legend=alt.Legend(orient='right')),
+            tooltip=[x_field, secondary_x, y_field]
+        ).facet(
+            column=alt.Column(f'{secondary_x}', title=None, header=alt.Header(labelOrient="bottom", labelPadding=10))  # Adjust label position and padding for month
+        )
+        styled_chart = self.style_chart(chart, title_text, width=False, height=False)
+        styled_chart= styled_chart.configure_view(stroke=None).configure_axis(grid=False)
         st.altair_chart(styled_chart, use_container_width=True)

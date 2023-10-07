@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from plots import HeatmapPlot, HistogramPlot, ScatterPlot
+from plots import HeatmapPlot, HistogramPlot, ScatterPlot, BarPlot
 import streamlit as st
 from sql_queries import run_sql_query, move_outs, occupants, facilities_sql
 from utils import grab_s3_file, password_authenticate, blank
@@ -11,6 +11,7 @@ st.set_page_config(page_title=page_title, page_icon="📈", layout= "wide")
 heatmap_plot = HeatmapPlot()
 histogram = HistogramPlot()
 scatter = ScatterPlot()
+barplot = BarPlot()
 
 st.subheader("Move Out Analysis")
 
@@ -88,7 +89,11 @@ with st.form("Filters"):
 blank()
 
 row2=st.columns([2,2,2])
-with row2[0]: # not working
+with row2[0]:
+    print("")
+
+    # barplot.plot_altair_monthly_bars(move_out_df, x_field='year', y_field='move_outs', secondary_x ='month', title_text="Moves Y/Y-Each Month")
+with row2[1]: 
     # display histogram of yoy move outs
     prepped_histo = histogram.prepare_histogram_data(move_out_df, start_date, end_date)
     # st.write(prepped_histo)
@@ -97,4 +102,7 @@ with row2[0]: # not working
 with row2[2]:
     # Use the display_heatmap method to display the heatmap in Streamlit
     heatmap_plot.display_heatmap(data=heatmap_data, x_field='month', y_field='year', color_field='% moved out', title_text='% Moved Out by Year and Month')
+
+# row 3
+barplot.plot_altair_monthly_bars(move_out_df, x_field='year', y_field='move_outs', secondary_x ='month', title_text="Moves Y/Y-Each Month")
 
